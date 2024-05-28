@@ -1,22 +1,30 @@
 -- "Constants"
-local DEFAULT_FRAMES = 25
-local DEFAULT_LAYERS = 3
-local OPACITY_CHANGE = 0.65
+local DEFAULT_FRAMES = 20
+local DEFAULT_LAYERS = 2
+local OPACITY_CHANGE = 0.7
 
-local DEFAULT_COLOR = app.fgColor
+local DEFAULT_COLOR = app.pixelColor.rgba(149, 192, 194, 156)
 local DEFAULT_RAINDROP_LENGTH = 15
-local DEFAULT_SPEED = 35.0 -- pixels per frame
+local DEFAULT_ANGLE = 0
+local DEFAULT_SPEED = 25.0 -- pixels per frame
 
 local DEFAULT_SPAWNRATE = 10
 local DEFAULT_RANDOM_LENGTH = 10
 
-local MAX_OUT_OF_CANVAS = 20
+local DROP_HEIGHT = 20
+local MAX_ANGLE = 45 -- from y-axis
 
 -- Globals
 local sprite = app.activeSprite
 local raindrops = {}
-local boundX = sprite.width * 1.5;
-local boundY = sprite.height;
+-- bounds
+local bound_left = 0 
+local bound_right = sprite.width
+local bound_top = sprite.height - DROP_HEIGHT
+local bound_bottom = sprite.height + DEFAULT_RAINDROP_LENGTH
+-- velocity
+local velocity_x = DEFAULT_SPEED * math.sin(DEFAULT_ANGLE);
+local velocity_y = DEFAULT_SPEED * math.cos(DEFAULT_ANGLE);
 
 -- Dialog Setup
 local dlg = Dialog {title = "Rain"}
@@ -26,7 +34,7 @@ dlg:number{
     label = "Frames",
     text = tostring(DEFAULT_FRAMES),
     decimals = 0,
-    onchange = function() ensureMinZero("frames") end
+    onchange = function() limitMin("frames", 0) end
 }
 
 dlg:number{
@@ -34,45 +42,29 @@ dlg:number{
     label = "Layers",
     text = tostring(DEFAULT_LAYERS),
     decimals = 0,
-    onchange = function() ensureMinZero("layers") end
+    onchange = function() limitMin("layers", 0) end
 }
 
+-- Drop customization
 dlg:separator{id = "drop_look", text = "Drop Appearance"}
 
-dlg:color{id = "color", label = "Outline Color: ", color = DEFAULT_COLOR}
+dlg:color{id = "color", label = "Raindrop Color: ", color = DEFAULT_COLOR}
 
 dlg:number{
     id = "drop_length",
     label = "Drop Length",
     text = tostring(DEFAULT_RAINDROP_LENGTH),
     decimals = 0,
-    onchange = function() ensureMinZero("drop_length") end
+    onchange = function() 
+        limitMin("drop_length", 1) 
+        bound_bottom = sprite.height + dlg.data.drop_length
+    end
 }
 
+dlg:check{id = "aa", label = "Anti-Aliasing", selected = true}
+
+-- Movement
 dlg:separator{id = "movement_group", text = "Movement"}
-
-dlg:number{
-    id = "speedX",
-    label = "Velocity",
-    text = tostring(0),
-    decimals = 1,
-    hexpand = false,
-    onchange = function()
-        updateAngle()
-        updateSpeed()
-    end
-}
-
-dlg:number{
-    id = "speedY",
-    text = tostring(DEFAULT_SPEED),
-    decimals = 1,
-    hexpand = false,
-    onchange = function()
-        updateAngle()
-        updateSpeed()
-    end
-}
 
 dlg:number{
     id = "speed",
@@ -80,7 +72,10 @@ dlg:number{
     text = tostring(DEFAULT_SPEED),
     decimals = 1,
     hexpand = false,
-    onchange = function() updateComponents() end
+    onchange = function()
+        limitMin("speed", 1)
+        updateComponents()
+    end
 }
 
 dlg:number{
@@ -88,34 +83,32 @@ dlg:number{
     text = "0°",
     decimals = 1,
     hexpand = false,
-    onchange = function() updateComponents() end
+    onchange = function()
+        clamp("angle", -MAX_ANGLE, MAX_ANGLE)
+        updateComponents()
+        updateXBounds()
+    end
 }
 
--- with respect to y-axis
-function updateAngle()
-    local angle = 90
-    if dlg.data.speedY ~= 0 then
-        angle = math.deg(math.atan(dlg.data.speedX / dlg.data.speedY))
+function updateXBounds()
+    local angle = dlg.data.angle 
+    if angle > 0 then
+        bound_left = -(sprite.height + math.abs(bound_top)) * math.tan(math.rad(dlg.data.angle))
+        bound_right = sprite.width;
+    elseif angle < 0 then
+        bound_left = 0
+        bound_right = sprite.width + (sprite.height + math.abs(bound_top)) * math.tan(math.rad(math.abs(dlg.data.angle)))
     end
-    dlg:modify{id = "angle", text = string.format("%.2f°", angle)}
-end
-
-function updateSpeed()
-    local speed = math.sqrt(
-                      dlg.data.speedX * dlg.data.speedX + dlg.data.speedY *
-                          dlg.data.speedY)
-    dlg:modify{id = "speed", text = string.format("%.2f", speed)}
 end
 
 function updateComponents()
-    local x = dlg.data.speed * math.sin(math.rad(dlg.data.angle))
-    local y = dlg.data.speed * math.cos(math.rad(dlg.data.angle))
-
-    dlg:modify{id = "speedX", text = string.format("%.2f", x)}
-    dlg:modify{id = "speedY", text = string.format("%.2f", y)}
-
+    -- angle is from y-axis
+    velocity_x = dlg.data.speed * math.sin(math.rad(dlg.data.angle))
+    velocity_y = dlg.data.speed * math.cos(math.rad(dlg.data.angle))
 end
 
+
+-- Spawning
 dlg:separator{id = "spawn_group", text = "Drop Spawning"}
 
 dlg:number{
@@ -123,7 +116,7 @@ dlg:number{
     label = "Drop Spawn Rate",
     text = tostring(10),
     decimals = 0,
-    onchange = function() ensureMinZero("spawnrate") end
+    onchange = function() limitMin("spawnrate", 1) end
 }
 
 dlg:separator{id = "randomness", text = "Randomness"}
@@ -133,12 +126,20 @@ dlg:number{
     label = "Length",
     text = tostring(DEFAULT_RANDOM_LENGTH),
     decimals = 0,
-    onchange = function() ensureMinZero("rand_length") end
+    onchange = function() limitMin("rand_length", 0) end
 }
 
-function ensureMinZero(id)
-    if dlg.data[id] < 0 then dlg:modify{id = id, text = "0"} end
+-- this can feel buggy for numbers greater than 1
+function limitMin(id, min)
+    if dlg.data[id] < min then dlg:modify{id = id, text = tostring(min)} end
+end
 
+function clamp(id, min, max)
+    if dlg.data[id] < min then
+        dlg:modify{id = id, text = tostring(min)}
+    elseif dlg.data[id] > max then
+        dlg:modify{id = id, text = tostring(max)}
+    end
 end
 
 dlg:button{id = "run", text = "RUN", onclick = function() run() end}
@@ -177,17 +178,12 @@ end
 
 function initializeDrops()
     raindrops = {}
-    local halfpoint = math.floor(dlg.data.frames / 2)
     for layerIndex = 1, dlg.data.layers do
         table.insert(raindrops, {})
         -- spawn drops
-        for _ = 1, dlg.data.spawnrate * 5 do
-            createDrop(layerIndex)
-        end
-        -- simulate until halfpoint
-        for _ = 1, halfpoint do
-            updateDrops(layerIndex)
-        end
+        for _ = 1, dlg.data.spawnrate * 5 do createDrop(layerIndex) end
+        -- simulate one full cycle
+        for _ = 1, dlg.data.frames do updateDrops(layerIndex) end
     end
 end
 
@@ -199,21 +195,21 @@ function updateDrops(index)
         local raindrop = raindrops[index][i]
         raindrop:move()
 
-        if (raindrop.y > sprite.height + MAX_OUT_OF_CANVAS) then
+        if (raindrop.y > bound_bottom) then
             table.remove(raindrops[index], i)
         end
     end
 end
 
 function createDrop(index, x, y)
-    x = x or math.random(-MAX_OUT_OF_CANVAS, sprite.width + MAX_OUT_OF_CANVAS)
-    y = y or math.random(-MAX_OUT_OF_CANVAS, 0)
+    x = x or math.random(bound_left, bound_right)
+    y = y or math.random(-bound_top, 0)
 
     length = dlg.data.drop_length
     -- length cannot be 0
     length = math.max(1, math.random(length - dlg.data.rand_length,
                                      length + dlg.data.rand_length))
-    local drop = Raindrop:new(x, y, dlg.data.speedX, dlg.data.speedY, length)
+    local drop = Raindrop:new(x, y, velocity_x, velocity_y, length)
     table.insert(raindrops[index], drop)
 
     return drop
@@ -272,9 +268,14 @@ function Raindrop:draw(layerIndex, image)
 
     local opacityMultiplier = OPACITY_CHANGE ^ (layerIndex - 1)
 
-    drawLine(image, x0, y0, self.x, self.y, function(image, x, y, opacity)
-        plot(image, x, y, opacity * opacityMultiplier)
-    end)
+    if dlg.data.aa then
+        drawAALine(x0, y0, self.x, self.y, function(x, y, opacity)
+            plot(image, x, y, opacity * opacityMultiplier)
+        end)
+    else
+        drawLine(x0, y0, self.x, self.y,
+                 function(x, y) plot(image, x, y, opacityMultiplier) end)
+    end
 end
 
 -- Function to plot a pixel with a specific opacity (0.0 to 1.0)
@@ -287,7 +288,7 @@ end
 
 -- Function to draw a line using Xiaolin Wu's algorithm
 -- https://en.wikipedia.org/wiki/Xiaolin_Wu%27s_line_algorithm
-function drawLine(image, x0, y0, x1, y1, plotFunction)
+function drawAALine(x0, y0, x1, y1, plotFunction)
     local function ipart(x) return math.floor(x) end -- integer part
     local function round(x) return math.floor(x + 0.5) end -- rounded integer part
     local function fpart(x) return x - math.floor(x) end -- fractional part
@@ -318,11 +319,9 @@ function drawLine(image, x0, y0, x1, y1, plotFunction)
     local ypxl1 = ipart(yend)
 
     if steep then
-        -- plot(image, ypxl1, xpxl1, rfpart(yend) * xgap)
-        plotFunction(image, ypxl1 + 1, xpxl1, fpart(yend) * xgap)
+        plotFunction(ypxl1 + 1, xpxl1, fpart(yend) * xgap)
     else
-        -- plot(image, xpxl1, ypxl1, rfpart(yend) * xgap)
-        plotFunction(image, xpxl1, ypxl1 + 1, fpart(yend) * xgap)
+        plotFunction(xpxl1, ypxl1 + 1, fpart(yend) * xgap)
     end
 
     local intery = yend + gradient
@@ -335,24 +334,55 @@ function drawLine(image, x0, y0, x1, y1, plotFunction)
     local ypxl2 = ipart(yend)
 
     if steep then
-        -- plot(image, ypxl2, xpxl2, rfpart(yend) * xgap)
-        plotFunction(image, ypxl2 + 1, xpxl2, fpart(yend) * xgap)
+        plotFunction(ypxl2 + 1, xpxl2, fpart(yend) * xgap)
     else
-        -- plot(image, xpxl2, ypxl2, rfpart(yend) * xgap)
-        plotFunction(image, xpxl2, ypxl2 + 1, fpart(yend) * xgap)
+        plotFunction(xpxl2, ypxl2 + 1, fpart(yend) * xgap)
     end
 
     if steep then
         for x = xpxl1 + 1, xpxl2 - 1 do
-            plotFunction(image, ipart(intery), x, rfpart(intery))
-            plotFunction(image, ipart(intery) + 1, x, fpart(intery))
+            plotFunction(ipart(intery), x, rfpart(intery))
+            plotFunction(ipart(intery) + 1, x, fpart(intery))
             intery = intery + gradient
         end
     else
         for x = xpxl1 + 1, xpxl2 - 1 do
-            plotFunction(image, x, ipart(intery), rfpart(intery))
-            plotFunction(image, x, ipart(intery) + 1, fpart(intery))
+            plotFunction(x, ipart(intery), rfpart(intery))
+            plotFunction(x, ipart(intery) + 1, fpart(intery))
             intery = intery + gradient
+        end
+    end
+end
+
+-- function to draw a line with Bresenham's line algorithm
+-- https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+function drawLine(x0, y0, x1, y1, plotFunction)
+    x0 = math.floor(x0)
+    y0 = math.floor(y0)
+    x1 = math.floor(x1)
+    y1 = math.floor(y1)
+    -- difference
+    local dx = math.abs(x1 - x0)
+    local dy = -math.abs(y1 - y0)
+    -- step
+    local sx = x0 < x1 and 1 or -1
+    local sy = y0 < y1 and 1 or -1
+    -- error
+    local err = dx + dy
+
+    while true do
+        plotFunction(x0, y0)
+        if x0 == x1 and y0 == y1 then break end
+        local e2 = 2 * err
+        if e2 >= dy then
+            if x0 == x1 then break end
+            err = err + dy
+            x0 = x0 + sx
+        end
+        if e2 <= dx then
+            if y0 == y1 then break end
+            err = err + dx
+            y0 = y0 + sy
         end
     end
 end

@@ -1,9 +1,8 @@
 # aseprite_rain
 ## Overview
-This Aseprite script provides a procedural rain generation tool. 
-It simplifies and automates the process of animating rain.
+This Aseprite script procedurally, and non-destructively, animates rain. 
 
-This is especially useful for scenes with very dense rain as animating those by hand can be a lot of work. 
+This is especially useful for scenes with very dense rain, as animating those by hand can be a lot of work. 
 
 ## Features
 - Easily generate dense rain effects

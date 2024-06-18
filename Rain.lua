@@ -7,8 +7,10 @@ local DEFAULT_RAINDROP_LENGTH = 15
 local DEFAULT_ANGLE = 0
 local DEFAULT_SPEED = 25.0 -- pixels per frame
 
-local DEFAULT_SPAWNRATE = 10
-local DEFAULT_RANDOM_LENGTH = 10
+local DEFAULT_SPAWNRATE = 12
+local DEFAULT_RANDOM_LENGTH_NEG = -10
+local DEFAULT_RANDOM_LENGTH_POS = 10
+local DEFAULT_RANDOM_ANGLE = "0°"
 
 local OPACITY_CHANGE = 0.6
 local DROP_HEIGHT = 20
@@ -22,9 +24,6 @@ local bound_left = 0
 local bound_right = sprite.width
 local bound_top = sprite.height - DROP_HEIGHT
 local bound_bottom = sprite.height + DEFAULT_RAINDROP_LENGTH
--- velocity
-local velocity_x = DEFAULT_SPEED * math.sin(DEFAULT_ANGLE);
-local velocity_y = DEFAULT_SPEED * math.cos(DEFAULT_ANGLE);
 
 -- Dialog Setup
 local dlg = Dialog {title = "Rain"}
@@ -55,44 +54,58 @@ dlg:combobox{
         local option = dlg.data["presets"]
         if option == "Default" then
             dlg:modify{id = "drop_length", text = DEFAULT_RAINDROP_LENGTH}
-            dlg:modify{id = "aa", selected = true}
+            dlg:modify{id = "aa", selected = false}
             dlg:modify{id = "speed", text = DEFAULT_SPEED}
             dlg:modify{id = "angle", text = DEFAULT_ANGLE}
             dlg:modify{id = "spawnrate", text = DEFAULT_SPAWNRATE}
-            dlg:modify{id = "rand_length", text = DEFAULT_RANDOM_LENGTH}
+            dlg:modify{id = "rand_length_neg", text = DEFAULT_RANDOM_LENGTH_NEG}
+            dlg:modify{id = "rand_length_pos", text = DEFAULT_RANDOM_LENGTH_POS}
+            dlg:modify{id = "rand_angle_neg", text = DEFAULT_RANDOM_ANGLE}
+            dlg:modify{id = "rand_angle_pos", text = DEFAULT_RANDOM_ANGLE}
         elseif option == "Drizzle" then
             dlg:modify{id = "drop_length", text = scaleToSpriteHeight(8)}
-            dlg:modify{id = "aa", selected = true}
+            dlg:modify{id = "aa", selected = false}
             dlg:modify{id = "speed", text = scaleToSpriteHeight(DEFAULT_SPEED)}
             dlg:modify{id = "angle", text = 0}
             dlg:modify{id = "spawnrate", text = scaleToSpriteWidth(6)}
-            dlg:modify{id = "rand_length", text = scaleToSpriteHeight(5)}
+            dlg:modify{id = "rand_length_neg", text = scaleToSpriteHeight(-5)}
+            dlg:modify{id = "rand_length_pos", text = scaleToSpriteHeight(5)}
+            dlg:modify{id = "rand_angle_neg", text = 0}
+            dlg:modify{id = "rand_angle_pos", text = 0}
         elseif option == "Rainstorm" then
             dlg:modify{id = "drop_length", text = scaleToSpriteHeight(DEFAULT_RAINDROP_LENGTH)}
-            dlg:modify{id = "aa", selected = true}
+            dlg:modify{id = "aa", selected = false}
             dlg:modify{id = "speed", text = scaleToSpriteHeight(DEFAULT_SPEED)}
             dlg:modify{id = "angle", text = DEFAULT_ANGLE}
             dlg:modify{id = "spawnrate", text = scaleToSpriteWidth(DEFAULT_SPAWNRATE)}
-            dlg:modify{id = "rand_length", text = scaleToSpriteHeight(DEFAULT_RANDOM_LENGTH)}
+            dlg:modify{id = "rand_length_neg", text = scaleToSpriteHeight(DEFAULT_RANDOM_LENGTH_NEG)}
+            dlg:modify{id = "rand_length_pos", text = scaleToSpriteHeight(DEFAULT_RANDOM_LENGTH_POS)}
+            dlg:modify{id = "rand_angle_neg", text = 0}
+            dlg:modify{id = "rand_angle_pos", text = 0}
         elseif option == "Monsoon" then
-            dlg:modify{id = "drop_length", text = scaleToSpriteHeight(25)}
+            dlg:modify{id = "drop_length", text = scaleToSpriteHeight(20)}
             dlg:modify{id = "aa", selected = false}
             dlg:modify{id = "speed", text = scaleToSpriteHeight(30)}
             dlg:modify{id = "angle", text = 25}
             dlg:modify{id = "spawnrate", text = scaleToSpriteWidth(30)}
-            dlg:modify{id = "rand_length", text = scaleToSpriteHeight(15)}
+            dlg:modify{id = "rand_length_neg", text = scaleToSpriteHeight(-12)}
+            dlg:modify{id = "rand_length_pos", text = scaleToSpriteHeight(15)}
+            dlg:modify{id = "rand_angle_neg", text = -2.5}
+            dlg:modify{id = "rand_angle_pos", text = 7.5}
         elseif option == "Windy" then
             dlg:modify{id = "drop_length", text = scaleToSpriteHeight(DEFAULT_RAINDROP_LENGTH)}
-            dlg:modify{id = "aa", text = true}
+            dlg:modify{id = "aa", text = false}
             dlg:modify{id = "speed", text = scaleToSpriteHeight(35)}
             dlg:modify{id = "angle", text = 45}
             dlg:modify{id = "spawnrate", text = scaleToSpriteWidth(DEFAULT_SPAWNRATE)}
-            dlg:modify{id = "rand_length", text = scaleToSpriteHeight(DEFAULT_RANDOM_LENGTH)}
+            dlg:modify{id = "rand_length_neg", text = scaleToSpriteHeight(DEFAULT_RANDOM_LENGTH_NEG)}
+            dlg:modify{id = "rand_length_pos", text = scaleToSpriteHeight(DEFAULT_RANDOM_LENGTH_POS)}
+            dlg:modify{id = "rand_angle_neg", text = 0}
+            dlg:modify{id = "rand_angle_pos", text = 0}
         else
             return
         end
 
-        updateComponents()
         updateYBounds()
         updateXBounds()
     end
@@ -132,7 +145,7 @@ dlg:number{
 dlg:check{
     id = "aa", 
     label = "Anti-Aliasing", 
-    selected = true,
+    selected = false,
 }
 
 -- Movement
@@ -145,7 +158,6 @@ dlg:number{
     decimals = 1,
     onchange = function()
         limitMin("speed", 1)
-        updateComponents()
     end
 }
 
@@ -155,7 +167,6 @@ dlg:number{
     decimals = 1,
     onchange = function()
         clamp("angle", -MAX_ANGLE, MAX_ANGLE)
-        updateComponents()
         updateXBounds()
     end
 }
@@ -175,13 +186,6 @@ function updateXBounds()
     end
 end
 
-function updateComponents()
-    -- angle is from y-axis
-    velocity_x = dlg.data.speed * math.sin(math.rad(dlg.data.angle))
-    velocity_y = dlg.data.speed * math.cos(math.rad(dlg.data.angle))
-end
-
-
 -- Spawning
 dlg:separator{id = "spawn_group", text = "Drop Spawning"}
 
@@ -198,12 +202,40 @@ dlg:number{
 dlg:separator{id = "randomness", text = "Randomness"}
 
 dlg:number{
-    id = "rand_length",
-    label = "Length",
-    text = tostring(DEFAULT_RANDOM_LENGTH),
+    id = "rand_length_neg",
+    label = "Length Randomness",
+    text = tostring(DEFAULT_RANDOM_LENGTH_NEG),
     decimals = 0,
     onchange = function() 
-        limitMin("rand_length", 0)
+        clamp("rand_length_neg", -dlg.data.drop_length, 0)
+    end
+}
+
+dlg:number{
+    id = "rand_length_pos",
+    text = tostring(DEFAULT_RANDOM_LENGTH_POS),
+    decimals = 0,
+    onchange = function() 
+        limitMin("rand_length_pos", 0)
+    end
+}
+
+dlg:number{
+    id = "rand_angle_neg",
+    label = "Angle Randomness",
+    text = DEFAULT_RANDOM_ANGLE,
+    decimals = 1,
+    onchange = function()
+        clamp("rand_angle_neg", -15, 0)
+    end
+}
+
+dlg:number{
+    id = "rand_angle_pos",
+    text = DEFAULT_RANDOM_ANGLE,
+    decimals = 1,
+    onchange = function()
+        clamp("rand_angle_pos", 0, 15)
     end
 }
 
@@ -285,8 +317,14 @@ function createDrop(index, x, y)
 
     length = dlg.data.drop_length
     -- length cannot be 0
-    length = math.max(1, math.random(length - dlg.data.rand_length,
-                                     length + dlg.data.rand_length))
+    length = math.max(1, math.random(length + dlg.data.rand_length_neg,
+                                     length + dlg.data.rand_length_pos))
+
+    local new_angle = math.random(dlg.data.angle + dlg.data.rand_angle_neg, dlg.data.angle + dlg.data.rand_angle_pos)
+
+    local velocity_x = dlg.data.speed * math.sin(math.rad(new_angle))
+    local velocity_y = dlg.data.speed * math.cos(math.rad(new_angle))
+
     local drop = Raindrop:new(x, y, velocity_x, velocity_y, length)
     table.insert(raindrops[index], drop)
 

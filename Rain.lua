@@ -1,7 +1,6 @@
 -- "Constants"
 local DEFAULT_FRAMES = 20
 local DEFAULT_LAYERS = 2
-local OPACITY_CHANGE = 0.7
 
 local DEFAULT_COLOR = app.pixelColor.rgba(149, 192, 194, 156)
 local DEFAULT_RAINDROP_LENGTH = 15
@@ -11,6 +10,7 @@ local DEFAULT_SPEED = 25.0 -- pixels per frame
 local DEFAULT_SPAWNRATE = 10
 local DEFAULT_RANDOM_LENGTH = 10
 
+local OPACITY_CHANGE = 0.6
 local DROP_HEIGHT = 20
 local MAX_ANGLE = 45 -- from y-axis
 
@@ -45,10 +45,77 @@ dlg:number{
     onchange = function() limitMin("layers", 0) end
 }
 
+-- Presets
+dlg:combobox{ 
+    id = "presets",
+    label = "Preset",
+    option = "Default",
+    options = { "Default", "Drizzle", "Rainstorm", "Monsoon", "Windy" },
+    onchange = function()
+        local option = dlg.data["presets"]
+        if option == "Default" then
+            dlg:modify{id = "drop_length", text = DEFAULT_RAINDROP_LENGTH}
+            dlg:modify{id = "aa", selected = true}
+            dlg:modify{id = "speed", text = DEFAULT_SPEED}
+            dlg:modify{id = "angle", text = DEFAULT_ANGLE}
+            dlg:modify{id = "spawnrate", text = DEFAULT_SPAWNRATE}
+            dlg:modify{id = "rand_length", text = DEFAULT_RANDOM_LENGTH}
+        elseif option == "Drizzle" then
+            dlg:modify{id = "drop_length", text = scaleToSpriteHeight(8)}
+            dlg:modify{id = "aa", selected = true}
+            dlg:modify{id = "speed", text = scaleToSpriteHeight(DEFAULT_SPEED)}
+            dlg:modify{id = "angle", text = 0}
+            dlg:modify{id = "spawnrate", text = scaleToSpriteWidth(6)}
+            dlg:modify{id = "rand_length", text = scaleToSpriteHeight(5)}
+        elseif option == "Rainstorm" then
+            dlg:modify{id = "drop_length", text = scaleToSpriteHeight(DEFAULT_RAINDROP_LENGTH)}
+            dlg:modify{id = "aa", selected = true}
+            dlg:modify{id = "speed", text = scaleToSpriteHeight(DEFAULT_SPEED)}
+            dlg:modify{id = "angle", text = DEFAULT_ANGLE}
+            dlg:modify{id = "spawnrate", text = scaleToSpriteWidth(DEFAULT_SPAWNRATE)}
+            dlg:modify{id = "rand_length", text = scaleToSpriteHeight(DEFAULT_RANDOM_LENGTH)}
+        elseif option == "Monsoon" then
+            dlg:modify{id = "drop_length", text = scaleToSpriteHeight(25)}
+            dlg:modify{id = "aa", selected = false}
+            dlg:modify{id = "speed", text = scaleToSpriteHeight(30)}
+            dlg:modify{id = "angle", text = 25}
+            dlg:modify{id = "spawnrate", text = scaleToSpriteWidth(30)}
+            dlg:modify{id = "rand_length", text = scaleToSpriteHeight(15)}
+        elseif option == "Windy" then
+            dlg:modify{id = "drop_length", text = scaleToSpriteHeight(DEFAULT_RAINDROP_LENGTH)}
+            dlg:modify{id = "aa", text = true}
+            dlg:modify{id = "speed", text = scaleToSpriteHeight(35)}
+            dlg:modify{id = "angle", text = 45}
+            dlg:modify{id = "spawnrate", text = scaleToSpriteWidth(DEFAULT_SPAWNRATE)}
+            dlg:modify{id = "rand_length", text = scaleToSpriteHeight(DEFAULT_RANDOM_LENGTH)}
+        else
+            return
+        end
+
+        updateComponents()
+        updateYBounds()
+        updateXBounds()
+    end
+}
+
+-- Preset values are calculated based on 128 x 96 (width x height)
+-- Calculate the value with respect to any sprite size
+function scaleToSpriteWidth(x) 
+    return math.ceil( x / 128 * sprite.width )
+end
+
+function scaleToSpriteHeight(y)
+    return math.ceil( y / 96 * sprite.height )
+end
+
 -- Drop customization
 dlg:separator{id = "drop_look", text = "Drop Appearance"}
 
-dlg:color{id = "color", label = "Raindrop Color: ", color = DEFAULT_COLOR}
+dlg:color{
+    id = "color", 
+    label = "Raindrop Color: ", 
+    color = DEFAULT_COLOR,
+}
 
 dlg:number{
     id = "drop_length",
@@ -57,11 +124,16 @@ dlg:number{
     decimals = 0,
     onchange = function() 
         limitMin("drop_length", 1) 
-        bound_bottom = sprite.height + dlg.data.drop_length
+        updateYBounds()
+        updateXBounds()
     end
 }
 
-dlg:check{id = "aa", label = "Anti-Aliasing", selected = true}
+dlg:check{
+    id = "aa", 
+    label = "Anti-Aliasing", 
+    selected = true,
+}
 
 -- Movement
 dlg:separator{id = "movement_group", text = "Movement"}
@@ -71,7 +143,6 @@ dlg:number{
     label = "Speed and Angle",
     text = tostring(DEFAULT_SPEED),
     decimals = 1,
-    hexpand = false,
     onchange = function()
         limitMin("speed", 1)
         updateComponents()
@@ -82,7 +153,6 @@ dlg:number{
     id = "angle",
     text = "0°",
     decimals = 1,
-    hexpand = false,
     onchange = function()
         clamp("angle", -MAX_ANGLE, MAX_ANGLE)
         updateComponents()
@@ -90,13 +160,17 @@ dlg:number{
     end
 }
 
+function updateYBounds()
+    bound_bottom = sprite.height + dlg.data.drop_length
+end
+
 function updateXBounds()
     local angle = dlg.data.angle 
     if angle > 0 then
         bound_left = -(sprite.height + math.abs(bound_top)) * math.tan(math.rad(dlg.data.angle))
-        bound_right = sprite.width;
+        bound_right = sprite.width + dlg.data.drop_length;
     elseif angle < 0 then
-        bound_left = 0
+        bound_left = -dlg.data.drop_length
         bound_right = sprite.width + (sprite.height + math.abs(bound_top)) * math.tan(math.rad(math.abs(dlg.data.angle)))
     end
 end
@@ -116,7 +190,9 @@ dlg:number{
     label = "Drop Spawn Rate",
     text = tostring(10),
     decimals = 0,
-    onchange = function() limitMin("spawnrate", 1) end
+    onchange = function() 
+        limitMin("spawnrate", 1)
+    end
 }
 
 dlg:separator{id = "randomness", text = "Randomness"}
@@ -126,7 +202,9 @@ dlg:number{
     label = "Length",
     text = tostring(DEFAULT_RANDOM_LENGTH),
     decimals = 0,
-    onchange = function() limitMin("rand_length", 0) end
+    onchange = function() 
+        limitMin("rand_length", 0)
+    end
 }
 
 -- this can feel buggy for numbers greater than 1
@@ -195,7 +273,7 @@ function updateDrops(index)
         local raindrop = raindrops[index][i]
         raindrop:move()
 
-        if (raindrop.y > bound_bottom) then
+        if (raindrop.y > bound_bottom or raindrop.x > bound_right or raindrop.x < bound_left) then
             table.remove(raindrops[index], i)
         end
     end

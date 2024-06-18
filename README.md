@@ -66,9 +66,15 @@ If you don't want this effect, simply set *Layers* to 1, then **Run** the script
 ### Presets
 Pre-picked groups of settings that modify everything except color.
 
+> **Note** The presets were designed for a 128 x 96 canvas then scaled to the actual canvas size,
+> so some values may get scaled too large in the case of very big canvases, this can cause long generation times if the settings aren't checked
+
 ### Raindrop Color
 This is the color of all raindrops on the first layer (*Rain 1*).  <br/>
 Note that opacity will be lower for the other layers, but aside from that, the color is retained.
+
+> **Recommendation** This is unlikely to look good right out of the box. Choose a color that matches the scene and reduce the opacity. <br/>
+> A custom color is likely to look better than just using white with a low opacity.
 
 ### Drop Length
 The length of each raindrop in **number of pixels**
@@ -78,7 +84,9 @@ Whether or not to use Anti-Aliasing when drawing the drops. <br/>
 **Note** This looks better on big canvases.
 
 ### Speed
-The speed of a raindrop in **pixels per frame**
+The speed of a raindrop in **pixels per frame**.
+
+> **Recommendation** Choose a fairly fast speed. The algorithm does not have anything to ensure a seamless loop, but this is not very obvious when the raindrops are travelling quickly.
 
 ### Angle
 The angle of which the raindrop is travelling, in **degrees**, measured with respect to the **negative y-axis**.

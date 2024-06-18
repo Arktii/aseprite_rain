@@ -2,14 +2,16 @@
 ## Overview
 This Aseprite script procedurally, and non-destructively, animates rain. 
 
+![Example 1](https://github.com/Arktii/aseprite_rain/assets/72131971/4a192c47-e9b2-401a-88aa-aa7ff5bbf95b)
+
 This is especially useful for scenes with very dense rain, as animating those by hand can be a lot of work. 
 
 ## Features
 - Easily generate dense rain effects
-- Create angled rain for dynamic scenes
-- Customize rain appearance like color, drop length, speed, density
+- Create angled rain
+- Customize raindrop appearance like color, drop length, speed, density
 - Layered effects - create multiple layers of rain
-- Non-destructive - create rain on new layers
+- Non-destructive - animate rain on new layers
 
 ## How to Use
 ### 1. [Install](https://community.aseprite.org/t/aseprite-scripts-collection/3599)
@@ -21,6 +23,9 @@ Download Rain.lua and drop it into the scripts folder <br/>
 
 ### 3. Customize the rain then click **Run**
 See the section [Customization](#customization) below for a more detailed explanation on how each option affects the rain generated
+
+> **Recommendation** Take time to choose a **color** that matches the scene. Reduce opacity if needed. <br/>
+> The presets already provide flexible settings for almost any scene, but they don't modify the color at all.
 
 ![dialog box](https://github.com/Arktii/aseprite_rain/assets/72131971/9ca736b7-0cee-44b4-9aab-fa649488d51d)
 
@@ -57,6 +62,9 @@ The number of frames the animation will span. More frames will take longer to ge
 The number of layers to be generated. Each layer is assigned a different opacity, this decreases with each layer, so the raindrops on layer *Rain 1* will be more visible than those on *Rain 4*.
 
 If you don't want this effect, simply set *Layers* to 1, then **Run** the script for each layer.
+
+### Presets
+Pre-picked groups of settings that modify everything except color.
 
 ### Raindrop Color
 This is the color of all raindrops on the first layer (*Rain 1*).  <br/>

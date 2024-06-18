@@ -9,4 +9,3 @@ Uses Bresenham's line algorithm to draw the raindrops without anti-aliasing http
 ## Possible Features to be added
 - A use guide in the README
 - Randomness to direction
-- Presets

@@ -48,21 +48,11 @@ dlg:number{
 dlg:combobox{ 
     id = "presets",
     label = "Preset",
-    option = "Default",
-    options = { "Default", "Drizzle", "Rainstorm", "Monsoon", "Windy" },
+    option = "Rainstorm",
+    options = { "Drizzle", "Rainstorm", "Monsoon", "Windy" },
     onchange = function()
         local option = dlg.data["presets"]
-        if option == "Default" then
-            dlg:modify{id = "drop_length", text = DEFAULT_RAINDROP_LENGTH}
-            dlg:modify{id = "aa", selected = false}
-            dlg:modify{id = "speed", text = DEFAULT_SPEED}
-            dlg:modify{id = "angle", text = DEFAULT_ANGLE}
-            dlg:modify{id = "spawnrate", text = DEFAULT_SPAWNRATE}
-            dlg:modify{id = "rand_length_neg", text = DEFAULT_RANDOM_LENGTH_NEG}
-            dlg:modify{id = "rand_length_pos", text = DEFAULT_RANDOM_LENGTH_POS}
-            dlg:modify{id = "rand_angle_neg", text = DEFAULT_RANDOM_ANGLE}
-            dlg:modify{id = "rand_angle_pos", text = DEFAULT_RANDOM_ANGLE}
-        elseif option == "Drizzle" then
+        if option == "Drizzle" then
             dlg:modify{id = "drop_length", text = scaleToSpriteHeight(8)}
             dlg:modify{id = "aa", selected = false}
             dlg:modify{id = "speed", text = scaleToSpriteHeight(DEFAULT_SPEED)}
@@ -133,7 +123,7 @@ dlg:color{
 dlg:number{
     id = "drop_length",
     label = "Drop Length",
-    text = tostring(DEFAULT_RAINDROP_LENGTH),
+    text = tostring(scaleToSpriteHeight(DEFAULT_RAINDROP_LENGTH)),
     decimals = 0,
     onchange = function() 
         limitMin("drop_length", 1) 
@@ -154,7 +144,7 @@ dlg:separator{id = "movement_group", text = "Movement"}
 dlg:number{
     id = "speed",
     label = "Speed and Angle",
-    text = tostring(DEFAULT_SPEED),
+    text = tostring(scaleToSpriteHeight(DEFAULT_SPEED)),
     decimals = 1,
     onchange = function()
         limitMin("speed", 1)
@@ -192,7 +182,7 @@ dlg:separator{id = "spawn_group", text = "Drop Spawning"}
 dlg:number{
     id = "spawnrate",
     label = "Drop Spawn Rate",
-    text = tostring(10),
+    text = tostring(scaleToSpriteWidth(DEFAULT_SPAWNRATE)),
     decimals = 0,
     onchange = function() 
         limitMin("spawnrate", 1)
@@ -204,7 +194,7 @@ dlg:separator{id = "randomness", text = "Randomness"}
 dlg:number{
     id = "rand_length_neg",
     label = "Length Randomness",
-    text = tostring(DEFAULT_RANDOM_LENGTH_NEG),
+    text = tostring(scaleToSpriteHeight(DEFAULT_RANDOM_LENGTH_NEG)),
     decimals = 0,
     onchange = function() 
         clamp("rand_length_neg", -dlg.data.drop_length, 0)
@@ -213,7 +203,7 @@ dlg:number{
 
 dlg:number{
     id = "rand_length_pos",
-    text = tostring(DEFAULT_RANDOM_LENGTH_POS),
+    text = tostring(scaleToSpriteHeight(DEFAULT_RANDOM_LENGTH_POS)),
     decimals = 0,
     onchange = function() 
         limitMin("rand_length_pos", 0)

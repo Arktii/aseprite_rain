@@ -2,7 +2,7 @@
 local DEFAULT_FRAMES = 20
 local DEFAULT_LAYERS = 2
 
-local DEFAULT_COLOR = app.pixelColor.rgba(149, 192, 194, 156)
+local DEFAULT_COLOR = app.pixelColor.rgba(255, 255, 255, 100)
 local DEFAULT_RAINDROP_LENGTH = 15
 local DEFAULT_ANGLE = 0
 local DEFAULT_SPEED = 25.0 -- pixels per frame
